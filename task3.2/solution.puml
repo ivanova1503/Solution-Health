@@ -1,0 +1,26 @@
+```plantuml
+@startuml
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+
+actor "Пациент" as Patient
+participant "API Gateway\n(Idempotency)" as Gateway
+participant "Сервис\nОркестратор (Saga)" as Saga
+participant "1С (Полисы)" as 1C
+participant "Сервис\nРасписания" as Booking
+participant "Платёжный\nшлюз" as Payment
+participant "LIS\n(Лаборатория)" as LIS
+
+Patient -> Gateway: Запрос на запись (Idempotency-Key)
+Gateway -> Saga: Старт саги
+Saga -> 1C: Проверить полис ДМС
+1C --> Saga: Полис валиден
+Saga -> Booking: Зарезервировать слот
+Booking --> Saga: Слот зарезервирован (BookingID)
+Saga -> Payment: Списать средства (BookingID)
+Payment --> Saga: Оплата успешна (PaymentID)
+Saga -> LIS: Зарезервировать время для анализов
+LIS --> Saga: Время зарезервировано (LabID)
+Saga --> Gateway: Успех (Данные записи)
+Gateway --> Patient: Запись подтверждена, пуш отправлен
+@enduml

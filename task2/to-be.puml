@@ -1,0 +1,64 @@
+```plantuml
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Целевая контекстная диаграмма архитектуры "Здоровье+"
+
+Person(patient, "Пациент", "Использует мобильное приложение для записи, оплаты и просмотра анализов")
+Person(doctor, "Врач", "Работает с расписанием и смотрит анализы пациентов")
+
+System_Boundary(healthplus, "ИТ-ландшафт Здоровье+") {
+    System(mobile_app, "Мобильное приложение", "iOS / Android", "Новый интерфейс для пациентов")
+
+    System(api_gateway, "API Gateway", "Kong / Nginx", "Единая точка входа, Rate Limiting, Idempotency, Auth")
+
+    System(booking_service, "Сервис расписания", "Java / REST", "Управление слотами")
+    SystemDb(redis, "Кэш (Redis)", "In-memory DB", "Кэширование расписания")
+    SystemDb(booking_db, "PostgreSQL", "БД расписания", "Основные данные о слотах")
+
+    System(payment_service, "Платёжный сервис", "Java / Saga", "Обработка платежей и возвратов")
+
+    System(event_bus, "Шина событий", "Apache Kafka", "Асинхронная передача событий")
+
+    System(notification_service, "Сервис уведомлений", "Java / RabbitMQ", "Отправка Push, SMS, Email")
+
+    System(policy_adapter, "Адаптер полисов (ACL)", "Java", "Изоляция 1С, Circuit Breaker")
+
+    System(lis_adapter, "Адаптер LIS", "Java", "Приём данных с оборудования, дедупликация")
+
+    System(crm, "CRM", "Java / REST", "Карточки пациентов, история")
+}
+
+System_Ext(payment_gw, "Платёжный шлюз", "Внешний REST API")
+System_Ext(1c, "1С: Полисы", "Legacy система")
+System_Ext(lis, "LIS (Лабораторная)", "Legacy SOAP/FTP")
+System_Ext(providers, "Провайдеры Push/SMS/Email", "Внешние сервисы")
+
+Rel(patient, mobile_app, "Записывается, оплачивает, смотрит анализы", "HTTPS")
+Rel(doctor, crm, "Просматривает анализы и карточки", "HTTPS")
+
+Rel(mobile_app, api_gateway, "Все запросы", "HTTPS / REST")
+Rel(api_gateway, booking_service, "Запись/поиск слотов", "REST")
+Rel(api_gateway, payment_service, "Оплата", "REST")
+Rel(api_gateway, crm, "Просмотр профиля и анализов", "REST")
+
+Rel(booking_service, redis, "Чтение слотов", "Redis Protocol")
+Rel(booking_service, booking_db, "Чтение/Запись", "JDBC")
+Rel(booking_service, event_bus, "Событие: Запись создана", "Kafka")
+
+Rel(payment_service, payment_gw, "Списание средств", "REST")
+Rel(payment_service, event_bus, "Событие: Оплата успешна/ошибка", "Kafka")
+
+Rel(policy_adapter, 1c, "Проверка полиса", "HTTP")
+Rel(api_gateway, policy_adapter, "Запрос проверки", "REST")
+
+Rel(lis, lis_adapter, "Передача анализов", "REST / FTP (замена)")
+Rel(lis_adapter, event_bus, "Событие: Анализы готовы", "Kafka")
+
+Rel(event_bus, crm, "Обновление анализов/записей", "Kafka")
+Rel(event_bus, notification_service, "Событие для пуша", "Kafka")
+
+Rel(notification_service, providers, "Отправка", "REST")
+Rel(providers, patient, "Push/SMS", "Асинхронно")
+
+@enduml

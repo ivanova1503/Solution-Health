@@ -1,0 +1,112 @@
+openapi: 3.2.0
+info:
+  title: HealthPlus Mobile API - Appointments
+  description: API для получения списка записей пациента
+  version: 1.0.0
+servers:
+  - url: https://api.healthplus.ru/api/v1
+    description: Production сервер
+
+paths:
+  /appointments:
+    get:
+      summary: Получение списка записей пациента
+      description: Возвращает список записей текущего авторизованного пациента с фильтрацией и пагинацией.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Фильтр по статусу записи
+          required: false
+          schema:
+            type: string
+            enum: [upcoming, past, cancelled]
+            default: upcoming
+        - name: limit
+          in: query
+          description: Количество записей на странице
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Смещение для пагинации
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Успешный ответ со списком записей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appointment'
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 42
+                      limit:
+                        type: integer
+                        example: 20
+                      offset:
+                        type: integer
+                        example: 0
+        '401':
+          description: Ошибка авторизации (токен отсутствует или просрочен)
+          content:
+            application/json:
+              example:
+                error: "Unauthorized"
+                message: "Требуется авторизация. Токен недействителен."
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              example:
+                error: "Internal Server Error"
+                message: "Не удалось получить данные. Попробуйте позже."
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        doctorName:
+          type: string
+          example: "Иванов Иван Иванович"
+        specialty:
+          type: string
+          example: "Кардиолог"
+        dateTime:
+          type: string
+          format: date-time
+          example: "2024-06-15T10:30:00Z"
+        status:
+          type: string
+          enum: [upcoming, past, cancelled]
+          example: "upcoming"
+        clinicAddress:
+          type: string
+          example: "г. Москва, ул. Ленина, д. 10"

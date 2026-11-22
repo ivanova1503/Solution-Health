@@ -1,0 +1,24 @@
+```plantuml
+@startuml
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+
+participant "Медицинское\nоборудование" as Eq
+participant "LIS" as LIS
+participant "LIS-адаптер\n(Дедупликация)" as Adapter
+queue "Kafka\n(Шина событий)" as Kafka
+participant "CRM" as CRM
+participant "Сервис\nуведомлений" as Notify
+participant "Мобильное\nприложение" as App
+
+Eq -> LIS: Загрузка результатов
+LIS -> Adapter: Передача данных (JSON/XML) по API
+Adapter -> Adapter: Проверка ID анализа (защита от дублей)
+Adapter -> Kafka: Публикация события "AnalysisReady"
+Kafka -> CRM: Чтение события (обновление данных)
+CRM -> Kafka: Подтверждение (Ack)
+Kafka -> Notify: Чтение события
+Notify -> App: Push-уведомление "Анализы готовы"
+App -> CRM: Запрос данных (через API Gateway)
+CRM -> App: Отображение результатов
+@enduml

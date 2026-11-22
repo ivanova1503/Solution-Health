@@ -1,0 +1,23 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Решение по снижению нагрузки на 1С (C4 Level 1)
+
+Person(patient, "Пациент", "Проверяет полис в приложении")
+System(mobile_app, "Мобильное приложение", "iOS / Android")
+System(api_gateway, "API Gateway", "Принимает запросы")
+SystemDb(redis, "Redis Cache", "Хранит результаты проверки на 15 минут")
+System(policy_service, "Сервис Полисов", "Управляет очередью и кэшем")
+SystemQueue(kafka, "Kafka Queue", "Буферизация запросов")
+System(rate_limiter, "Воркер (Rate Limiter)", "Пропускает ровно 40 RPS")
+System_Ext(1c, "1С: Полисы", "Legacy система (макс. 50 RPS)")
+
+Rel(patient, mobile_app, "Запрос")
+Rel(mobile_app, api_gateway, "HTTPS")
+Rel(api_gateway, policy_service, "REST")
+Rel(policy_service, redis, "Читает кэш")
+Rel(policy_service, kafka, "Кладёт в очередь (если нет в кэше)")
+Rel(kafka, rate_limiter, "Читает")
+Rel(rate_limiter, 1c, "Проверяет (40 RPS)")
+Rel(1c, policy_service, "Возвращает ответ (сохраняется в кэш)")
+@enduml

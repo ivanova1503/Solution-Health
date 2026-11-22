@@ -1,0 +1,15 @@
+```plantuml
+@startuml
+actor "Пациент" as Patient
+participant "Мобильное\nприложение" as App
+participant "Сервер\nАвторизации" as Auth
+participant "API Gateway" as Gateway
+
+Patient -> App: Ввод номера телефона и SMS
+App -> Auth: Запрос на вход
+Auth --> App: Access Token (15 мин) + Refresh Token (30 дней)
+App -> App: Сохранение токенов в Keychain/Keystore
+App -> Gateway: Запрос (Header: Authorization: Bearer <Access Token>)
+Gateway -> Gateway: Валидация токена
+Gateway --> App: Данные (200 OK)
+@enduml
